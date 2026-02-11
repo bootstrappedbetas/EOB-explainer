@@ -3,6 +3,7 @@ import LandingPage from './components/LandingPage'
 import LoginPage from './components/LoginPage'
 import RegisterPage from './components/RegisterPage'
 import DashboardPage from './components/DashboardPage'
+import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   return (
@@ -11,7 +12,14 @@ function App() {
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   )
 }

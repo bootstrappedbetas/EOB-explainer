@@ -1,13 +1,30 @@
 import { Link } from 'react-router-dom'
+import { useAuth } from '../auth/AuthProvider'
 
 export default function DashboardPage() {
+  const { logout } = useAuth()
+
+  function handleLogout() {
+    logout({
+      logoutParams: {
+        returnTo: window.location.origin,
+      },
+    })
+  }
+
   return (
     <div className="auth-page">
       <nav className="auth-nav">
         <Link to="/" className="auth-nav__brand">TrueCost</Link>
         <div className="auth-nav__links">
           <Link to="/dashboard" className="auth-nav__link">Dashboard</Link>
-          <Link to="/login" className="auth-nav__link">Log out</Link>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="auth-nav__link auth-nav__logout"
+          >
+            Log out
+          </button>
         </div>
       </nav>
 

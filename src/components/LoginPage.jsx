@@ -1,16 +1,16 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 
-export default function RegisterPage() {
+export default function LoginPage() {
   const { loginWithRedirect } = useAuth()
   const location = useLocation()
   const returnTo = location.state?.from?.pathname || '/dashboard'
 
-  async function handleEmailSignUp() {
+  async function handleEmailSignIn() {
     await loginWithRedirect({
       authorizationParams: {
         connection: 'Username-Password-Authentication',
-        screen_hint: 'signup',
+        screen_hint: 'login',
       },
       appState: { returnTo },
     })
@@ -37,18 +37,18 @@ export default function RegisterPage() {
 
       <div className="auth-container">
         <div className="auth-card">
-          <h1 className="auth-card__title">Create your account</h1>
+          <h1 className="auth-card__title">Sign in to TrueCost</h1>
           <p className="auth-card__subtitle">
-            Get started with TrueCost to understand your healthcare costs
+            Use your email, Google, or organization SSO
           </p>
 
           <div className="auth-providers" style={{ marginTop: '1.5rem' }}>
             <button
               type="button"
-              onClick={handleEmailSignUp}
+              onClick={handleEmailSignIn}
               className="auth-provider-btn auth-provider-btn--primary"
             >
-              Create account with Email
+              Sign in with Email
             </button>
 
             <button
@@ -57,7 +57,7 @@ export default function RegisterPage() {
               className="auth-provider-btn auth-provider-btn--google"
             >
               <GoogleIcon />
-              Sign up with Google
+              Sign in with Google
             </button>
 
             <button
@@ -71,8 +71,8 @@ export default function RegisterPage() {
           </div>
 
           <p className="auth-card__footer">
-            Already have an account?{' '}
-            <Link to="/login" state={location.state} className="auth-card__link">Sign in</Link>
+            Don&apos;t have an account?{' '}
+            <Link to="/register" state={location.state} className="auth-card__link">Create one</Link>
           </p>
         </div>
       </div>
