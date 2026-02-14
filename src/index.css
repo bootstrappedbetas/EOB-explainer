@@ -803,6 +803,155 @@ html {
   }
 }
 
+/* EOB detail modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+}
+
+.modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow: auto;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-border);
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal__header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.modal__close {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  line-height: 1;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-text-muted);
+}
+
+.modal__close:hover {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.modal__body {
+  padding: 1.5rem;
+}
+
+.modal__error {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(220, 38, 38, 0.08);
+  color: #991b1b;
+  border-radius: var(--radius-sm);
+}
+
+.modal__placeholder {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.modal__meta {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+}
+
+.modal__meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.modal__meta-label {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.modal__amount {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.modal__section {
+  margin-bottom: 1.5rem;
+}
+
+.modal__section:last-child {
+  margin-bottom: 0;
+}
+
+.modal__section h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9375rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.modal__summary {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.modal__code-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.modal__code-item {
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.modal__code {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.modal__code-type {
+  margin-left: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.modal__code-desc {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
 .dashboard-placeholder .auth-card__subtitle {
   margin-bottom: 1.5rem;
 }

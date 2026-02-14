@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS eobs (
   amount_charged DECIMAL(12, 2),
   insurance_paid DECIMAL(12, 2),
   file_path TEXT,
+  extracted_text TEXT,
   ai_summary TEXT,
   status TEXT DEFAULT 'pending',
   procedure_code TEXT,

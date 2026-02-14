@@ -2,6 +2,7 @@ import path from 'path'
 import fs from 'fs/promises'
 import { query, getOrCreateUser } from '../db/index.js'
 import { processPdf } from '../services/eobProcessingService.js'
+import { generateSummary } from '../services/aiSummaryService.js'
 import { getUploadsDir } from '../utils/fileStorage.js'
 
 export async function listEobs(req, res) {
@@ -90,7 +91,7 @@ export async function uploadEob(req, res) {
           amount_owed,
           file_path,
           status,
-          ai_summary
+          extracted_text
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING id, member, plan, service_date AS date, provider, amount_owed, status, created_at`,
       [
@@ -102,7 +103,7 @@ export async function uploadEob(req, res) {
         amountOwed,
         path.basename(filePath),
         requiresOcr ? 'pending_ocr' : status || 'processed',
-        rawText ? rawText.slice(0, 5000) : null,
+        rawText ? rawText.slice(0, 15000) : null,
       ]
     )
 
@@ -116,6 +117,50 @@ export async function uploadEob(req, res) {
   } catch (err) {
     console.error('uploadEob error', err)
     res.status(500).json({ error: 'Failed to upload EOB', details: err.message })
+  }
+}
+
+export async function summarizeEob(req, res) {
+  try {
+    const userSub = req.userId
+    const { id } = req.params
+    if (!userSub) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+
+    const result = await query(
+      `SELECT e.* FROM eobs e
+       JOIN users u ON e.user_id = u.id
+       WHERE e.id = $1 AND u.auth0_sub = $2`,
+      [id, userSub]
+    )
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'EOB not found' })
+    }
+    const eob = result.rows[0]
+
+    let rawText = eob.extracted_text || eob.ai_summary
+    if (!rawText && eob.file_path) {
+      const fullPath = path.join(getUploadsDir(), eob.file_path)
+      const processResult = await processPdf({ filePath: fullPath })
+      rawText = processResult.rawText
+      if (rawText) {
+        await query(
+          'UPDATE eobs SET extracted_text = $1 WHERE id = $2',
+          [rawText.slice(0, 15000), id]
+        )
+      }
+    }
+
+    const aiResult = await generateSummary(rawText)
+    const stored = JSON.stringify(aiResult)
+
+    await query('UPDATE eobs SET ai_summary = $1 WHERE id = $2', [stored, id])
+
+    res.json(aiResult)
+  } catch (err) {
+    console.error('summarizeEob error', err)
+    res.status(500).json({ error: 'Failed to generate summary', details: err.message })
   }
 }
 

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import UploadZone from './UploadZone'
 import EOBTable from './EOBTable'
+import EOBDetailModal from './EOBDetailModal'
 import { fetchEobs, uploadEob } from '../lib/api'
 
 export default function DashboardPage() {
@@ -126,6 +127,11 @@ export default function DashboardPage() {
           />
         </section>
       </main>
+
+      <EOBDetailModal
+        eobId={selectedEobId}
+        onClose={() => setSelectedEobId(null)}
+      />
     </div>
   )
 }

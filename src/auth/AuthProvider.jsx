@@ -1,11 +1,15 @@
 import { Auth0Provider, useAuth0 } from '@auth0/auth0-react'
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useEffect } from 'react'
 import { authConfig } from './config'
+import { configureApi } from '../lib/api'
 
 const AuthContext = createContext(null)
 
 function Auth0Wrapper({ children }) {
   const auth = useAuth0()
+  useEffect(() => {
+    configureApi(auth.getAccessTokenSilently)
+  }, [auth.getAccessTokenSilently])
   return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>
 }
 
