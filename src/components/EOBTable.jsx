@@ -50,7 +50,7 @@ export default function EOBTable({ eobs = [], selectedId, onSelect, isLoading = 
                 <td>{eob.plan || '—'}</td>
                 <td>{formatDate(eob.date)}</td>
                 <td>{eob.provider || '—'}</td>
-                <td className="eob-table__amount">{formatCurrency(eob.amountOwed)}</td>
+                <td className="eob-table__amount">{formatCurrency(eob.amount_owed)}</td>
               </tr>
             ))
           )}

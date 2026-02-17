@@ -109,6 +109,12 @@ export default function EOBDetailModal({ eobId, onClose }) {
           ) : eob ? (
             <>
               <div className="modal__meta">
+                {eob.claim_number && (
+                  <div className="modal__meta-row">
+                    <span className="modal__meta-label">Claim #</span>
+                    <span>{eob.claim_number}</span>
+                  </div>
+                )}
                 <div className="modal__meta-row">
                   <span className="modal__meta-label">Provider</span>
                   <span>{eob.provider || '—'}</span>
@@ -121,6 +127,18 @@ export default function EOBDetailModal({ eobId, onClose }) {
                   <span className="modal__meta-label">Plan</span>
                   <span>{eob.plan || '—'}</span>
                 </div>
+                {eob.amount_charged != null && (
+                  <div className="modal__meta-row">
+                    <span className="modal__meta-label">Amount charged</span>
+                    <span className="modal__amount">{formatCurrency(eob.amount_charged)}</span>
+                  </div>
+                )}
+                {eob.insurance_paid != null && (
+                  <div className="modal__meta-row">
+                    <span className="modal__meta-label">Plan paid</span>
+                    <span className="modal__amount">{formatCurrency(eob.insurance_paid)}</span>
+                  </div>
+                )}
                 <div className="modal__meta-row">
                   <span className="modal__meta-label">Amount owed</span>
                   <span className="modal__amount">{formatCurrency(eob.amount_owed)}</span>

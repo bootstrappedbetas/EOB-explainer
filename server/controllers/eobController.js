@@ -2,6 +2,7 @@ import path from 'path'
 import fs from 'fs/promises'
 import { query, getOrCreateUser } from '../db/index.js'
 import { processPdf } from '../services/eobProcessingService.js'
+import { extractEobFields } from '../services/eobExtractionService.js'
 import { generateSummary } from '../services/aiSummaryService.js'
 import { getUploadsDir } from '../utils/fileStorage.js'
 
@@ -14,10 +15,13 @@ export async function listEobs(req, res) {
 
     const rows = await query(
       `SELECT e.id,
+              e.claim_number,
               e.member,
               e.plan,
               e.service_date AS date,
               e.provider,
+              e.amount_charged,
+              e.insurance_paid,
               e.amount_owed,
               e.status,
               e.created_at
@@ -75,35 +79,61 @@ export async function uploadEob(req, res) {
     const processingResult = await processPdf({ filePath })
     const { normalized, requiresOcr, status, rawText } = processingResult
 
-    const member = normalized?.member || null
-    const plan = normalized?.plan || null
-    const serviceDate = normalized?.serviceDate || null
-    const provider = normalized?.provider || null
-    const amountOwed = normalized?.amountOwed ?? null
+    let claimNumber = null
+    let member = normalized?.member || null
+    let plan = normalized?.plan || null
+    let serviceDate = normalized?.serviceDate || null
+    let provider = normalized?.provider || null
+    let amountCharged = null
+    let insurancePaid = null
+    let amountOwed = normalized?.amountOwed ?? null
+    let procedureCode = null
+
+    if (rawText && !requiresOcr) {
+      const extracted = await extractEobFields(rawText)
+      if (extracted.claim_number ?? extracted.patient_name ?? extracted.provider ?? extracted.amount_owed != null) {
+        claimNumber = extracted.claim_number ?? claimNumber
+        member = extracted.patient_name ?? member
+        provider = extracted.provider ?? provider
+        amountCharged = extracted.amount_billed ?? amountCharged
+        insurancePaid = extracted.plan_paid ?? insurancePaid
+        amountOwed = extracted.amount_owed ?? amountOwed
+        serviceDate = extracted.service_date ?? serviceDate
+        procedureCode = extracted.procedure_code ?? procedureCode
+      }
+    }
 
     const insert = await query(
       `INSERT INTO eobs (
           user_id,
+          claim_number,
           member,
           plan,
           service_date,
           provider,
+          amount_charged,
+          insurance_paid,
           amount_owed,
           file_path,
           status,
-          extracted_text
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING id, member, plan, service_date AS date, provider, amount_owed, status, created_at`,
+          extracted_text,
+          procedure_code
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING id, claim_number, member, plan, service_date AS date, provider, amount_charged, insurance_paid, amount_owed, status, created_at`,
       [
         userId,
+        claimNumber,
         member,
         plan,
         serviceDate ? new Date(serviceDate) : null,
         provider,
+        amountCharged,
+        insurancePaid,
         amountOwed,
         path.basename(filePath),
         requiresOcr ? 'pending_ocr' : status || 'processed',
         rawText ? rawText.slice(0, 15000) : null,
+        procedureCode,
       ]
     )
 
