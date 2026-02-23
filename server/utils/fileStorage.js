@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import multer from 'multer'
 import { fileURLToPath } from 'url'
+import { isSupabaseStorageEnabled } from './supabaseStorage.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -12,7 +13,7 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true })
 }
 
-const storage = multer.diskStorage({
+const diskStorage = multer.diskStorage({
   destination: function destination(req, file, cb) {
     cb(null, uploadsDir)
   },
@@ -22,6 +23,10 @@ const storage = multer.diskStorage({
     cb(null, `${timestamp}-${safeName}`)
   },
 })
+
+// Use memory storage when Supabase is enabled (buffer needed for upload to cloud)
+const memoryStorage = multer.memoryStorage()
+const storage = isSupabaseStorageEnabled() ? memoryStorage : diskStorage
 
 export const uploadMiddleware = multer({
   storage,

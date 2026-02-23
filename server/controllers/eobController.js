@@ -2,6 +2,7 @@ import path from 'path'
 import fs from 'fs/promises'
 import { query, getOrCreateUser } from '../db/index.js'
 import { processPdf } from '../services/eobProcessingService.js'
+import { isSupabaseStorageEnabled, uploadPdf, downloadPdf, deletePdf } from '../utils/supabaseStorage.js'
 import { extractEobFields } from '../services/eobExtractionService.js'
 import { generateSummary } from '../services/aiSummaryService.js'
 import { getUploadsDir } from '../utils/fileStorage.js'
@@ -74,9 +75,13 @@ export async function uploadEob(req, res) {
     }
 
     const userId = await getOrCreateUser(userSub, userEmail)
-    const filePath = file.path
+    const useSupabase = isSupabaseStorageEnabled()
+    const buffer = file.buffer
+    const filePath = file.path // only set when using disk storage
 
-    const processingResult = await processPdf({ filePath })
+    const processingResult = useSupabase
+      ? await processPdf({ buffer })
+      : await processPdf({ filePath })
     const { normalized, requiresOcr, status, rawText } = processingResult
 
     let claimNumber = null
@@ -101,6 +106,19 @@ export async function uploadEob(req, res) {
         serviceDate = extracted.service_date ?? serviceDate
         procedureCode = extracted.procedure_code ?? procedureCode
       }
+    }
+
+    let storedFilePath
+    if (useSupabase && buffer) {
+      const timestamp = Date.now()
+      const safeName = file.originalname.replace(/[^a-z0-9.\-_]/gi, '_')
+      const storagePath = `${userId}/${timestamp}-${safeName}`
+      storedFilePath = await uploadPdf(buffer, storagePath)
+      if (!storedFilePath) {
+        return res.status(500).json({ error: 'Failed to upload PDF to storage' })
+      }
+    } else {
+      storedFilePath = path.basename(filePath)
     }
 
     const insert = await query(
@@ -130,7 +148,7 @@ export async function uploadEob(req, res) {
         amountCharged,
         insurancePaid,
         amountOwed,
-        path.basename(filePath),
+        storedFilePath,
         requiresOcr ? 'pending_ocr' : status || 'processed',
         rawText ? rawText.slice(0, 15000) : null,
         procedureCode,
@@ -171,8 +189,14 @@ export async function summarizeEob(req, res) {
 
     let rawText = eob.extracted_text || eob.ai_summary
     if (!rawText && eob.file_path) {
-      const fullPath = path.join(getUploadsDir(), eob.file_path)
-      const processResult = await processPdf({ filePath: fullPath })
+      let processResult
+      if (eob.file_path.includes('/')) {
+        const pdfBuffer = await downloadPdf(eob.file_path)
+        processResult = pdfBuffer ? await processPdf({ buffer: pdfBuffer }) : { rawText: null }
+      } else {
+        const fullPath = path.join(getUploadsDir(), eob.file_path)
+        processResult = await processPdf({ filePath: fullPath })
+      }
       rawText = processResult.rawText
       if (rawText) {
         await query(
@@ -194,14 +218,18 @@ export async function summarizeEob(req, res) {
   }
 }
 
-export async function deleteEobFile(filename) {
-  if (!filename) return
-  const fullPath = path.join(getUploadsDir(), filename)
-  try {
-    await fs.unlink(fullPath)
-  } catch (err) {
-    if (err.code !== 'ENOENT') {
-      console.warn('Failed to remove file', fullPath, err)
+export async function deleteEobFile(filePath) {
+  if (!filePath) return
+  if (filePath.includes('/')) {
+    await deletePdf(filePath)
+  } else {
+    const fullPath = path.join(getUploadsDir(), filePath)
+    try {
+      await fs.unlink(fullPath)
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        console.warn('Failed to remove file', fullPath, err)
+      }
     }
   }
 }

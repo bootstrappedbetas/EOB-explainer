@@ -64,8 +64,8 @@ async function extractFieldsFromText(text) {
   }
 }
 
-export async function processPdf({ filePath }) {
-  const buffer = await fs.readFile(filePath)
+export async function processPdf({ filePath, buffer: providedBuffer }) {
+  const buffer = providedBuffer ?? await fs.readFile(filePath)
   const isScanned = await detectScannedPdf(buffer)
 
   if (isScanned) {
