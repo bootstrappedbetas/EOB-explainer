@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS eobs (
   claim_number TEXT,
   member TEXT,
   plan TEXT,
+  group_number TEXT,
+  member_id TEXT,
   service_date DATE,
   provider TEXT,
   amount_owed DECIMAL(12, 2) DEFAULT 0,

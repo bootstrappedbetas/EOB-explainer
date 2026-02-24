@@ -19,6 +19,8 @@ export async function listEobs(req, res) {
               e.claim_number,
               e.member,
               e.plan,
+              e.group_number,
+              e.member_id,
               e.service_date AS date,
               e.provider,
               e.amount_charged,
@@ -87,6 +89,8 @@ export async function uploadEob(req, res) {
     let claimNumber = null
     let member = normalized?.member || null
     let plan = normalized?.plan || null
+    let groupNumber = null
+    let memberId = null
     let serviceDate = normalized?.serviceDate || null
     let provider = normalized?.provider || null
     let amountCharged = null
@@ -96,9 +100,21 @@ export async function uploadEob(req, res) {
 
     if (rawText && !requiresOcr) {
       const extracted = await extractEobFields(rawText)
-      if (extracted.claim_number ?? extracted.patient_name ?? extracted.provider ?? extracted.amount_owed != null) {
+      const hasUsefulData = [
+        extracted.claim_number,
+        extracted.patient_name,
+        extracted.plan,
+        extracted.group_number,
+        extracted.member_id,
+        extracted.provider,
+        extracted.amount_owed,
+      ].some((v) => v != null)
+      if (hasUsefulData) {
         claimNumber = extracted.claim_number ?? claimNumber
         member = extracted.patient_name ?? member
+        plan = extracted.plan ?? plan
+        groupNumber = extracted.group_number ?? groupNumber
+        memberId = extracted.member_id ?? memberId
         provider = extracted.provider ?? provider
         amountCharged = extracted.amount_billed ?? amountCharged
         insurancePaid = extracted.plan_paid ?? insurancePaid
@@ -127,6 +143,8 @@ export async function uploadEob(req, res) {
           claim_number,
           member,
           plan,
+          group_number,
+          member_id,
           service_date,
           provider,
           amount_charged,
@@ -136,13 +154,15 @@ export async function uploadEob(req, res) {
           status,
           extracted_text,
           procedure_code
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        RETURNING id, claim_number, member, plan, service_date AS date, provider, amount_charged, insurance_paid, amount_owed, status, created_at`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        RETURNING id, claim_number, member, plan, group_number, member_id, service_date AS date, provider, amount_charged, insurance_paid, amount_owed, status, created_at`,
       [
         userId,
         claimNumber,
         member,
         plan,
+        groupNumber,
+        memberId,
         serviceDate ? new Date(serviceDate) : null,
         provider,
         amountCharged,

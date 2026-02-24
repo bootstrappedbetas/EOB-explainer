@@ -6,13 +6,16 @@ const openai = new OpenAI({
 
 const EXTRACTION_PROMPT = `You are an expert at extracting structured data from Explanation of Benefits (EOB) documents.
 
-Extract the following fields from the EOB text. The document typically contains a table with columns like:
-Claim #, Patient Name, Provider, Amount Billed/Charged, Your Plan Paid/Insurance Paid, What You Owe/Patient Responsibility.
+Extract the following fields from the EOB text. The document typically has a header/member section and a table with columns like:
+Claim #, Patient/Member Name, Plan, Group #, Member ID, Provider, Amount Billed/Charged, Your Plan Paid/Insurance Paid, What You Owe/Patient Responsibility.
 
 Return valid JSON with exactly this structure (use null for any missing field):
 {
   "claim_number": "string or null - the claim/control number",
-  "patient_name": "string or null - member/patient name",
+  "patient_name": "string or null - the member/patient name exactly as shown on the EOB (e.g. DOE, JOHN)",
+  "plan": "string or null - the full plan name (carrier + product/employer, e.g. Horizon BCBS NJ Novartis)",
+  "group_number": "string or null - group number or subscriber group ID used to identify the plan",
+  "member_id": "string or null - member ID, subscriber ID, or certificate number (identifies the member within the plan)",
   "provider": "string or null - provider or facility name",
   "amount_billed": number or null - total amount charged/billed (dollars, e.g. 500.00),
   "plan_paid": number or null - amount insurance/plan paid (dollars, e.g. 450.00),
@@ -24,8 +27,10 @@ Return valid JSON with exactly this structure (use null for any missing field):
 Rules:
 - Amounts must be numbers in dollars (not cents). 50.00 not 5000.
 - Patient responsibility (amount_owed) is usually the smallest amount.
-- Use null for any field you cannot find.
-- Do not invent data. Only extract what is clearly present in the document.`
+- Use null for any field you cannot find or if content is redacted/unreadable.
+- Do not invent data. Only extract what is clearly present in the document.
+- For plan: capture the full plan description (insurer name + product/employer when shown, e.g. "Horizon BCBS NJ Novartis").
+- For patient_name and plan: ensure these match the member/plan table on the EOB.`
 
 const MAX_AMOUNT = 999999999.99
 
@@ -40,12 +45,15 @@ function sanitizeAmount(val) {
 /**
  * Extract structured EOB fields from raw PDF text using AI.
  * @param {string} rawText - Extracted text from the PDF
- * @returns {Promise<{ claim_number, patient_name, provider, amount_billed, plan_paid, amount_owed, service_date, procedure_code }>}
+ * @returns {Promise<{ claim_number, patient_name, plan, group_number, member_id, provider, amount_billed, plan_paid, amount_owed, service_date, procedure_code }>}
  */
 export async function extractEobFields(rawText) {
   const empty = {
     claim_number: null,
     patient_name: null,
+    plan: null,
+    group_number: null,
+    member_id: null,
     provider: null,
     amount_billed: null,
     plan_paid: null,
@@ -83,6 +91,9 @@ export async function extractEobFields(rawText) {
     return {
       claim_number: typeof parsed.claim_number === 'string' ? parsed.claim_number.trim() || null : null,
       patient_name: typeof parsed.patient_name === 'string' ? parsed.patient_name.trim() || null : null,
+      plan: typeof parsed.plan === 'string' ? parsed.plan.trim() || null : null,
+      group_number: typeof parsed.group_number === 'string' ? parsed.group_number.trim() || null : null,
+      member_id: typeof parsed.member_id === 'string' ? parsed.member_id.trim() || null : null,
       provider: typeof parsed.provider === 'string' ? parsed.provider.trim() || null : null,
       amount_billed: sanitizeAmount(parsed.amount_billed),
       plan_paid: sanitizeAmount(parsed.plan_paid),

@@ -123,10 +123,28 @@ export default function EOBDetailModal({ eobId, onClose }) {
                   <span className="modal__meta-label">Service date</span>
                   <span>{formatDate(eob.service_date)}</span>
                 </div>
+                {eob.member && (
+                  <div className="modal__meta-row">
+                    <span className="modal__meta-label">Member</span>
+                    <span>{eob.member}</span>
+                  </div>
+                )}
                 <div className="modal__meta-row">
                   <span className="modal__meta-label">Plan</span>
                   <span>{eob.plan || '—'}</span>
                 </div>
+                {eob.group_number && (
+                  <div className="modal__meta-row">
+                    <span className="modal__meta-label">Group #</span>
+                    <span>{eob.group_number}</span>
+                  </div>
+                )}
+                {eob.member_id && (
+                  <div className="modal__meta-row">
+                    <span className="modal__meta-label">Member ID</span>
+                    <span>{eob.member_id}</span>
+                  </div>
+                )}
                 {eob.amount_charged != null && (
                   <div className="modal__meta-row">
                     <span className="modal__meta-label">Amount charged</span>
