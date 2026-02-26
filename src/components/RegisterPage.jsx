@@ -42,6 +42,11 @@ export default function RegisterPage() {
             Get started with TrueCost to understand your healthcare costs
           </p>
 
+          <div className="register-pricing-note">
+            <span className="register-price">$10/month</span>
+            <span className="register-price-desc">After signup, you&apos;ll complete your subscription to access EOB uploads and AI summaries.</span>
+          </div>
+
           <div className="auth-providers" style={{ marginTop: '1.5rem' }}>
             <button
               type="button"

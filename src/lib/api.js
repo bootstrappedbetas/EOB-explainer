@@ -70,6 +70,25 @@ export async function fetchBenchmarks(procedureCode) {
   return handleResponse(response)
 }
 
+export async function createCheckoutSession() {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${BASE_URL}/stripe/create-checkout-session`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+  })
+  return handleResponse(response)
+}
+
+export async function fetchSubscription() {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${BASE_URL}/stripe/subscription`, {
+    credentials: 'include',
+    headers,
+  })
+  return handleResponse(response)
+}
+
 export async function summarizeEob(id) {
   const headers = await getAuthHeaders()
   const response = await fetch(`${BASE_URL}/eobs/${id}/summarize`, {

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url'
 import 'dotenv/config'
 
 import eobsRouter from './routes/eobs.js'
+import stripeRouter, { handleWebhook } from './routes/stripe.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -13,10 +14,14 @@ const app = express()
 const port = process.env.PORT || 3000
 
 app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173', credentials: true }))
+
+// Stripe webhook needs raw body for signature verification - must be before express.json()
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), handleWebhook)
 app.use(express.json())
 
 // API routes
 app.use('/api/eobs', eobsRouter)
+app.use('/api/stripe', stripeRouter)
 
 // Health check
 app.get('/api/health', (req, res) => {
