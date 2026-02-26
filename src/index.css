@@ -919,6 +919,25 @@ html {
   color: var(--color-text-muted);
 }
 
+.modal__separator {
+  margin: 1.5rem 0;
+  border: none;
+  border-top: 2px dashed var(--color-border);
+}
+
+.modal__chart-container {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  min-height: 140px;
+}
+
+.modal__benchmark-note {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
 .modal__summary {
   margin: 0;
   line-height: 1.6;

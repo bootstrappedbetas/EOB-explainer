@@ -238,6 +238,51 @@ export async function summarizeEob(req, res) {
   }
 }
 
+export async function getBenchmarks(req, res) {
+  try {
+    const userSub = req.userId
+    if (!userSub) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+
+    const { procedure_code: procedureCode } = req.query
+    if (!procedureCode || typeof procedureCode !== 'string') {
+      return res.status(400).json({ error: 'procedure_code query parameter is required' })
+    }
+
+    // Users' average: AVG(amount_owed) across our eobs for this procedure (all users for better sample)
+    const usersResult = await query(
+      `SELECT AVG(e.amount_owed)::numeric AS avg_owed, COUNT(*)::int AS sample_size
+         FROM eobs e
+        WHERE e.procedure_code = $1
+          AND e.amount_owed IS NOT NULL`,
+      [procedureCode.trim()]
+    )
+    const usersRow = usersResult.rows[0]
+    let usersAverageOwed = null
+    let sampleSize = 0
+    if (usersRow && usersRow.avg_owed != null) {
+      usersAverageOwed = Number(usersRow.avg_owed)
+      sampleSize = usersRow.sample_size || 0
+    }
+
+    // Market average: placeholder for future public API (CMS, Turquoise, etc.)
+    // Will fetch from external pricing DB, cache in benchmarks table, return here
+    const marketAverageOwed = null
+
+    res.json({
+      procedure_code: procedureCode.trim(),
+      usersAverageOwed,
+      usersSampleSize: sampleSize,
+      marketAverageOwed,
+      marketSource: null, // e.g. "CMS" or "Turquoise Health" when wired
+    })
+  } catch (err) {
+    console.error('getBenchmarks error', err)
+    res.status(500).json({ error: 'Failed to fetch benchmarks' })
+  }
+}
+
 export async function deleteEobFile(filePath) {
   if (!filePath) return
   if (filePath.includes('/')) {

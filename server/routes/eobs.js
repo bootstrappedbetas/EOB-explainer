@@ -1,13 +1,14 @@
 import { Router } from 'express'
 import { optionalAuth } from '../middleware/auth.js'
 import { uploadMiddleware } from '../utils/fileStorage.js'
-import { getEob, listEobs, summarizeEob, uploadEob } from '../controllers/eobController.js'
+import { getBenchmarks, getEob, listEobs, summarizeEob, uploadEob } from '../controllers/eobController.js'
 
 const router = Router()
 
 router.use(optionalAuth)
 
 router.get('/', listEobs)
+router.get('/benchmarks', getBenchmarks)
 router.get('/:id', getEob)
 router.post('/', uploadMiddleware.single('file'), uploadEob)
 router.post('/:id/summarize', summarizeEob)

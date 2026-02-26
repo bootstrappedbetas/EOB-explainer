@@ -61,6 +61,15 @@ export async function fetchEob(id) {
   return handleResponse(response)
 }
 
+export async function fetchBenchmarks(procedureCode) {
+  const headers = await getAuthHeaders()
+  const response = await fetch(
+    `${BASE_URL}/eobs/benchmarks?procedure_code=${encodeURIComponent(procedureCode)}`,
+    { credentials: 'include', headers }
+  )
+  return handleResponse(response)
+}
+
 export async function summarizeEob(id) {
   const headers = await getAuthHeaders()
   const response = await fetch(`${BASE_URL}/eobs/${id}/summarize`, {
