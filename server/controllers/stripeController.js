@@ -16,7 +16,7 @@ function requireStripe() {
 
 /**
  * Create Stripe Checkout Session for subscription.
- * Requires auth. Links auth0_sub and email to the session for webhook handling.
+ * Requires auth. Links auth0_sub to session for webhook.
  */
 export async function createCheckoutSession(req, res) {
   try {
@@ -35,15 +35,11 @@ export async function createCheckoutSession(req, res) {
       payment_method_types: ['card'],
       line_items: [{ price: PRICE_ID, quantity: 1 }],
       success_url: `${APP_URL}/dashboard?checkout=success`,
-      cancel_url: `${APP_URL}/subscribe?checkout=canceled`,
+      cancel_url: `${APP_URL}/subscribe`,
       customer_email: userEmail || undefined,
       client_reference_id: userId,
-      metadata: {
-        auth0_sub: userSub,
-      },
-      subscription_data: {
-        metadata: { auth0_sub: userSub },
-      },
+      metadata: { auth0_sub: userSub },
+      subscription_data: { metadata: { auth0_sub: userSub } },
     })
 
     res.json({ url: session.url })
@@ -122,6 +118,7 @@ export async function handleWebhook(req, res) {
         const auth0Sub = session.metadata?.auth0_sub || session.subscription_data?.metadata?.auth0_sub
         const customerId = session.customer
         const subscriptionId = session.subscription
+        const email = session.customer_email || session.customer_details?.email || null
 
         if (!auth0Sub || !customerId) {
           console.warn('checkout.session.completed missing auth0_sub or customer')
@@ -129,13 +126,15 @@ export async function handleWebhook(req, res) {
         }
 
         await query(
-          `UPDATE users
-             SET stripe_customer_id = $1,
-                 stripe_subscription_id = $2,
-                 subscription_status = 'active',
-                 updated_at = NOW()
-           WHERE auth0_sub = $3`,
-          [customerId, subscriptionId || null, auth0Sub]
+          `INSERT INTO users (auth0_sub, email, stripe_customer_id, stripe_subscription_id, subscription_status)
+           VALUES ($1, $2, $3, $4, 'active')
+           ON CONFLICT (auth0_sub) DO UPDATE SET
+             stripe_customer_id = EXCLUDED.stripe_customer_id,
+             stripe_subscription_id = EXCLUDED.stripe_subscription_id,
+             subscription_status = EXCLUDED.subscription_status,
+             email = COALESCE(EXCLUDED.email, users.email),
+             updated_at = NOW()`,
+          [auth0Sub, email, customerId, subscriptionId || null]
         )
         console.log('Updated user subscription for', auth0Sub)
         break

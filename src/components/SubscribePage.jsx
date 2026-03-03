@@ -1,22 +1,17 @@
-import { useState, useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { createCheckoutSession } from '../lib/api'
 
 export default function SubscribePage() {
   const { isAuthenticated } = useAuth()
-  const [searchParams] = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const checkoutStatus = searchParams.get('checkout')
-
-  useEffect(() => {
-    if (checkoutStatus === 'canceled') {
-      setError('Checkout was canceled. You can try again when ready.')
-    }
-  }, [checkoutStatus])
 
   async function handleSubscribe() {
+    if (!isAuthenticated) {
+      return
+    }
     setIsLoading(true)
     setError('')
     try {
@@ -43,11 +38,14 @@ export default function SubscribePage() {
           <div className="auth-card">
             <h1 className="auth-card__title">Sign in to subscribe</h1>
             <p className="auth-card__subtitle">
-              Create an account or sign in to access TrueCost for $10/month.
+              Create an account or sign in to subscribe and upload EOBs.
             </p>
-            <Link to="/register" className="btn btn--primary" style={{ display: 'inline-block', marginTop: '1rem' }}>
+            <Link to="/register" state={{ from: { pathname: '/subscribe' } }} className="btn btn--primary" style={{ display: 'inline-block', marginTop: '1rem' }}>
               Create account
             </Link>
+            <p className="auth-card__footer" style={{ marginTop: '1rem' }}>
+              <Link to="/login" state={{ from: { pathname: '/subscribe' } }} className="auth-card__link">Already have an account? Sign in</Link>
+            </p>
           </div>
         </div>
       </div>
@@ -63,7 +61,7 @@ export default function SubscribePage() {
         <div className="auth-card subscribe-card">
           <h1 className="auth-card__title">Subscribe to TrueCost</h1>
           <p className="auth-card__subtitle">
-            Understand your Explanation of Benefits with AI summaries, cost breakdowns, and benchmarks.
+            Subscribe to upload EOBs and get AI summaries, cost breakdowns, and benchmarks.
           </p>
 
           <div className="subscribe-pricing">

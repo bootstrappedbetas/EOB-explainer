@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
+import { useSubscription } from '../hooks/useSubscription'
 import UploadZone from './UploadZone'
 import EOBTable from './EOBTable'
 import EOBDetailModal from './EOBDetailModal'
-import { fetchEobs, uploadEob } from '../lib/api'
+import { fetchEobs, uploadEob, createCheckoutSession } from '../lib/api'
 
 export default function DashboardPage() {
   const { logout } = useAuth()
+  const { hasAccess } = useSubscription()
+  const navigate = useNavigate()
   const [isUploading, setIsUploading] = useState(false)
   const [uploadStatus, setUploadStatus] = useState('')
   const [eobs, setEobs] = useState([])
@@ -37,6 +40,16 @@ export default function DashboardPage() {
     }
   }, [])
 
+  async function handleSubscribeRequired() {
+    try {
+      const { url } = await createCheckoutSession()
+      if (url) window.location.href = url
+      else navigate('/subscribe', { state: { from: { pathname: '/dashboard' } } })
+    } catch {
+      navigate('/subscribe', { state: { from: { pathname: '/dashboard' } } })
+    }
+  }
+
   function handleLogout() {
     logout({
       logoutParams: {
@@ -63,6 +76,10 @@ export default function DashboardPage() {
       }
     } catch (err) {
       console.error('Upload failed', err)
+      if (err?.message?.includes('Subscription required')) {
+        navigate('/subscribe', { state: { from: { pathname: '/dashboard' } } })
+        return
+      }
       setError(err.message || 'Upload failed')
     } finally {
       setIsUploading(false)
@@ -98,11 +115,18 @@ export default function DashboardPage() {
           <div className="dashboard__upload-info">
             <h2>Upload a new EOB</h2>
             <p>Drop a PDF or connect to your insurance portal.</p>
+            {!hasAccess && (
+              <p className="dashboard__subscribe-prompt" style={{ marginTop: '0.5rem' }}>
+                <Link to="/subscribe" className="auth-card__link">Subscribe</Link> to upload EOBs ($10/month).
+              </p>
+            )}
           </div>
           <UploadZone
             isUploading={isUploading}
             statusMessage={uploadStatus}
             onFilesSelected={handleUpload}
+            hasAccess={hasAccess}
+            onSubscribeRequired={handleSubscribeRequired}
           />
         </section>
 

@@ -11,6 +11,15 @@ const checkJwt = domain && audience
     })
   : null
 
+// Same as checkJwt but does not require credentials - allows unauthenticated requests
+const checkJwtOptional = domain && audience
+  ? auth({
+      audience,
+      issuerBaseURL: `https://${domain}`,
+      credentialsRequired: false,
+    })
+  : null
+
 // Extract user from JWT and attach to req
 export function attachUser(req, res, next) {
   if (req.auth?.payload?.sub) {
@@ -29,6 +38,30 @@ export function optionalAuth(req, res, next) {
   }
   checkJwt(req, res, (err) => {
     if (err) return next(err)
+    attachUser(req, res, next)
+  })
+}
+
+/** Validates JWT if present but never rejects; for guest checkout etc. */
+export function optionalAuthPermissive(req, res, next) {
+  if (!checkJwtOptional) {
+    req.userId = 'dev-user'
+    req.userEmail = 'dev@localhost'
+    return next()
+  }
+  checkJwtOptional(req, res, () => {
+    attachUser(req, res, next)
+  })
+}
+
+// Auth middleware: validates JWT if present, but never rejects (for guest checkout etc.)
+export function optionalAuthPermissive(req, res, next) {
+  if (!checkJwtOptional) {
+    req.userId = 'dev-user'
+    req.userEmail = 'dev@localhost'
+    return next()
+  }
+  checkJwtOptional(req, res, () => {
     attachUser(req, res, next)
   })
 }

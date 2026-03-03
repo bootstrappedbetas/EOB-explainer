@@ -76,6 +76,17 @@ export async function uploadEob(req, res) {
       return res.status(401).json({ error: 'Unauthorized' })
     }
 
+    if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_ID) {
+      const subResult = await query(
+        'SELECT subscription_status FROM users WHERE auth0_sub = $1',
+        [userSub]
+      )
+      const status = subResult.rows[0]?.subscription_status
+      if (!['active', 'trialing'].includes(status)) {
+        return res.status(402).json({ error: 'Subscription required to upload EOBs' })
+      }
+    }
+
     const userId = await getOrCreateUser(userSub, userEmail)
     const useSupabase = isSupabaseStorageEnabled()
     const buffer = file.buffer

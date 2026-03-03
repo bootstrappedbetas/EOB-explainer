@@ -3,9 +3,8 @@ import { useAuth } from '../auth/AuthProvider'
 import { fetchSubscription } from '../lib/api'
 
 /**
- * Fetches and caches the current user's subscription status.
- * Returns hasAccess=true when subscription is active or trialing.
- * When Stripe is not configured, hasAccess defaults to true (no paywall).
+ * Fetches subscription status. Stripe-first flow: user pays before creating account,
+ * so subscription is always present when they log in.
  */
 export function useSubscription() {
   const { isAuthenticated } = useAuth()
@@ -32,10 +31,9 @@ export function useSubscription() {
           setHasAccess(data.hasAccess ?? false)
         }
       } catch (err) {
-        // If Stripe/subscription API fails (e.g. not configured), allow access
         if (!cancelled) {
           setStatus(null)
-          setHasAccess(true)
+          setHasAccess(!err?.message?.includes('401'))
         }
       } finally {
         if (!cancelled) setIsLoading(false)

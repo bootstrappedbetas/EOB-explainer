@@ -4,10 +4,16 @@ export default function UploadZone({
   isUploading = false,
   statusMessage = '',
   onFilesSelected,
+  hasAccess = true,
+  onSubscribeRequired,
 }) {
   const inputRef = useRef(null)
 
   function handleClick() {
+    if (!hasAccess && onSubscribeRequired) {
+      onSubscribeRequired()
+      return
+    }
     inputRef.current?.click()
   }
 
@@ -21,6 +27,10 @@ export default function UploadZone({
 
   function handleDrop(event) {
     event.preventDefault()
+    if (!hasAccess && onSubscribeRequired) {
+      onSubscribeRequired()
+      return
+    }
     const files = Array.from(event.dataTransfer.files || [])
     if (files.length && onFilesSelected) {
       onFilesSelected(files)
@@ -39,9 +49,9 @@ export default function UploadZone({
       onDragOver={handleDragOver}
       role="button"
       tabIndex={0}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
           handleClick()
         }
       }}
