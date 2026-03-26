@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url'
 import 'dotenv/config'
 
 import eobsRouter from './routes/eobs.js'
+import usersRouter from './routes/users.js'
 import stripeRouter, { handleWebhook } from './routes/stripe.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -21,6 +22,7 @@ app.use(express.json())
 
 // API routes
 app.use('/api/eobs', eobsRouter)
+app.use('/api/users', usersRouter)
 app.use('/api/stripe', stripeRouter)
 
 // Health check

@@ -61,12 +61,38 @@ export async function fetchEob(id) {
   return handleResponse(response)
 }
 
-export async function fetchBenchmarks(procedureCode) {
+export async function fetchUserProfile() {
   const headers = await getAuthHeaders()
-  const response = await fetch(
-    `${BASE_URL}/eobs/benchmarks?procedure_code=${encodeURIComponent(procedureCode)}`,
-    { credentials: 'include', headers }
-  )
+  const response = await fetch(`${BASE_URL}/users/me`, {
+    credentials: 'include',
+    headers,
+  })
+  return handleResponse(response)
+}
+
+export async function updateUserZip(zip) {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${BASE_URL}/users/zip`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ zip }),
+  })
+  return handleResponse(response)
+}
+
+export async function fetchBenchmarks(procedureCode, zip = null) {
+  const headers = await getAuthHeaders()
+  const params = new URLSearchParams({
+    procedure_code: procedureCode,
+  })
+  if (zip) {
+    params.set('zip', zip)
+  }
+  const response = await fetch(`${BASE_URL}/eobs/benchmarks?${params.toString()}`, {
+    credentials: 'include',
+    headers,
+  })
   return handleResponse(response)
 }
 

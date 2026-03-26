@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { VictoryBar, VictoryChart, VictoryAxis, VictoryTheme } from 'victory'
-import { fetchEob, fetchBenchmarks, summarizeEob } from '../lib/api'
+import { fetchEob, fetchBenchmarks, summarizeEob, fetchUserProfile } from '../lib/api'
 
 function formatCurrency(amount) {
   if (amount === null || amount === undefined) return '—'
@@ -18,6 +18,7 @@ export default function EOBDetailModal({ eobId, onClose }) {
   const [eob, setEob] = useState(null)
   const [summary, setSummary] = useState(null)
   const [benchmarks, setBenchmarks] = useState(null)
+  const [profileZip, setProfileZip] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSummarizing, setIsSummarizing] = useState(false)
   const [error, setError] = useState('')
@@ -26,6 +27,7 @@ export default function EOBDetailModal({ eobId, onClose }) {
     if (!eobId) {
       setEob(null)
       setSummary(null)
+      setProfileZip(null)
       setIsLoading(false)
       return
     }
@@ -37,9 +39,13 @@ export default function EOBDetailModal({ eobId, onClose }) {
       setError('')
 
       try {
-        const data = await fetchEob(eobId)
+        const [data, profile] = await Promise.all([
+          fetchEob(eobId),
+          fetchUserProfile().catch(() => ({ zipCode: null })),
+        ])
         if (cancelled) return
         setEob(data)
+        setProfileZip(profile?.zipCode ?? null)
 
         const stored = data.ai_summary
         if (stored) {
@@ -75,7 +81,7 @@ export default function EOBDetailModal({ eobId, onClose }) {
     load()
   }, [eobId])
 
-  // Fetch benchmarks when we have eob with procedure_code
+  // Fetch benchmarks when we have eob with procedure_code (uses profile ZIP when set)
   useEffect(() => {
     if (!eob?.procedure_code) {
       setBenchmarks(null)
@@ -86,7 +92,7 @@ export default function EOBDetailModal({ eobId, onClose }) {
 
     async function loadBenchmarks() {
       try {
-        const data = await fetchBenchmarks(eob.procedure_code)
+        const data = await fetchBenchmarks(eob.procedure_code, profileZip || undefined)
         if (!cancelled) setBenchmarks(data)
       } catch (err) {
         if (!cancelled) setBenchmarks(null)
@@ -95,7 +101,7 @@ export default function EOBDetailModal({ eobId, onClose }) {
 
     loadBenchmarks()
     return () => { cancelled = true }
-  }, [eob?.procedure_code])
+  }, [eob?.procedure_code, profileZip])
 
   if (!eobId) return null
 
@@ -226,7 +232,12 @@ export default function EOBDetailModal({ eobId, onClose }) {
               <section className="modal__section modal__charts">
                 <h3>Benchmark comparison</h3>
                 <p className="modal__benchmark-note">
-                  Compare your amount owed to users&apos; average{benchmarks?.marketAverageOwed == null && benchmarks?.marketSource == null && ' (market data coming soon)'}
+                  {benchmarks?.benchmarkScope === 'zip' && benchmarks?.benchmarkZip
+                    ? `Users' average for this procedure in ZIP ${benchmarks.benchmarkZip}. `
+                    : benchmarks?.benchmarkScope === 'national_fallback' && benchmarks?.benchmarkZip
+                      ? `Not enough data in ZIP ${benchmarks.benchmarkZip} yet; showing national users' average. `
+                      : 'Compare your amount owed to other users\' average for this procedure. '}
+                  {benchmarks?.marketAverageOwed == null && benchmarks?.marketSource == null && '(Market data coming soon.)'}
                 </p>
                 <div className="modal__chart-container">
                   <VictoryChart

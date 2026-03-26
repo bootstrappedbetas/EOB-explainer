@@ -6,6 +6,7 @@ import { isSupabaseStorageEnabled, uploadPdf, downloadPdf, deletePdf } from '../
 import { extractEobFields } from '../services/eobExtractionService.js'
 import { generateSummary } from '../services/aiSummaryService.js'
 import { getUploadsDir } from '../utils/fileStorage.js'
+import { normalizeZip } from '../utils/zip.js'
 
 export async function listEobs(req, res) {
   try {
@@ -88,6 +89,9 @@ export async function uploadEob(req, res) {
     }
 
     const userId = await getOrCreateUser(userSub, userEmail)
+    const zipRow = await query('SELECT zip_code FROM users WHERE id = $1', [userId])
+    const patientZip = normalizeZip(zipRow.rows[0]?.zip_code ?? '') || null
+
     const useSupabase = isSupabaseStorageEnabled()
     const buffer = file.buffer
     const filePath = file.path // only set when using disk storage
@@ -164,8 +168,9 @@ export async function uploadEob(req, res) {
           file_path,
           status,
           extracted_text,
-          procedure_code
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          procedure_code,
+          patient_zip
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING id, claim_number, member, plan, group_number, member_id, service_date AS date, provider, amount_charged, insurance_paid, amount_owed, status, created_at`,
       [
         userId,
@@ -183,6 +188,7 @@ export async function uploadEob(req, res) {
         requiresOcr ? 'pending_ocr' : status || 'processed',
         rawText ? rawText.slice(0, 15000) : null,
         procedureCode,
+        patientZip,
       ]
     )
 
@@ -256,37 +262,78 @@ export async function getBenchmarks(req, res) {
       return res.status(401).json({ error: 'Unauthorized' })
     }
 
-    const { procedure_code: procedureCode } = req.query
+    const { procedure_code: procedureCode, zip: zipParam } = req.query
     if (!procedureCode || typeof procedureCode !== 'string') {
       return res.status(400).json({ error: 'procedure_code query parameter is required' })
     }
 
-    // Users' average: AVG(amount_owed) across our eobs for this procedure (all users for better sample)
-    const usersResult = await query(
+    const code = procedureCode.trim()
+
+    let benchmarkZip = typeof zipParam === 'string' ? normalizeZip(zipParam) : null
+    if (!benchmarkZip) {
+      const zr = await query('SELECT zip_code FROM users WHERE auth0_sub = $1', [userSub])
+      benchmarkZip = normalizeZip(zr.rows[0]?.zip_code ?? '') || null
+    }
+
+    const nationalResult = await query(
       `SELECT AVG(e.amount_owed)::numeric AS avg_owed, COUNT(*)::int AS sample_size
          FROM eobs e
         WHERE e.procedure_code = $1
           AND e.amount_owed IS NOT NULL`,
-      [procedureCode.trim()]
+      [code]
     )
-    const usersRow = usersResult.rows[0]
-    let usersAverageOwed = null
-    let sampleSize = 0
-    if (usersRow && usersRow.avg_owed != null) {
-      usersAverageOwed = Number(usersRow.avg_owed)
-      sampleSize = usersRow.sample_size || 0
+    const nationalRow = nationalResult.rows[0]
+    let nationalAvg = null
+    let nationalN = 0
+    if (nationalRow && nationalRow.avg_owed != null) {
+      nationalAvg = Number(nationalRow.avg_owed)
+      nationalN = nationalRow.sample_size || 0
     }
 
-    // Market average: placeholder for future public API (CMS, Turquoise, etc.)
-    // Will fetch from external pricing DB, cache in benchmarks table, return here
+    let zipAvg = null
+    let zipN = 0
+    if (benchmarkZip) {
+      const zipResult = await query(
+        `SELECT AVG(e.amount_owed)::numeric AS avg_owed, COUNT(*)::int AS sample_size
+           FROM eobs e
+          WHERE e.procedure_code = $1
+            AND e.patient_zip = $2
+            AND e.amount_owed IS NOT NULL`,
+        [code, benchmarkZip]
+      )
+      const zipRow = zipResult.rows[0]
+      if (zipRow && zipRow.avg_owed != null) {
+        zipAvg = Number(zipRow.avg_owed)
+        zipN = zipRow.sample_size || 0
+      }
+    }
+
+    let benchmarkScope = 'national'
+    let usersAverageOwed = nationalAvg
+    let usersSampleSize = nationalN
+
+    if (benchmarkZip && zipN > 0) {
+      benchmarkScope = 'zip'
+      usersAverageOwed = zipAvg
+      usersSampleSize = zipN
+    } else if (benchmarkZip && zipN === 0) {
+      benchmarkScope = 'national_fallback'
+      usersAverageOwed = nationalAvg
+      usersSampleSize = nationalN
+    }
+
     const marketAverageOwed = null
 
     res.json({
-      procedure_code: procedureCode.trim(),
+      procedure_code: code,
+      benchmarkZip,
+      benchmarkScope,
       usersAverageOwed,
-      usersSampleSize: sampleSize,
+      usersSampleSize,
+      usersNationalAverageOwed: nationalAvg,
+      usersNationalSampleSize: nationalN,
       marketAverageOwed,
-      marketSource: null, // e.g. "CMS" or "Turquoise Health" when wired
+      marketSource: null,
     })
   } catch (err) {
     console.error('getBenchmarks error', err)

@@ -42,18 +42,6 @@ export function optionalAuth(req, res, next) {
   })
 }
 
-/** Validates JWT if present but never rejects; for guest checkout etc. */
-export function optionalAuthPermissive(req, res, next) {
-  if (!checkJwtOptional) {
-    req.userId = 'dev-user'
-    req.userEmail = 'dev@localhost'
-    return next()
-  }
-  checkJwtOptional(req, res, () => {
-    attachUser(req, res, next)
-  })
-}
-
 // Auth middleware: validates JWT if present, but never rejects (for guest checkout etc.)
 export function optionalAuthPermissive(req, res, next) {
   if (!checkJwtOptional) {

@@ -5,7 +5,8 @@ import { useSubscription } from '../hooks/useSubscription'
 import UploadZone from './UploadZone'
 import EOBTable from './EOBTable'
 import EOBDetailModal from './EOBDetailModal'
-import { fetchEobs, uploadEob, createCheckoutSession } from '../lib/api'
+import LocationZipPrompt from './LocationZipPrompt'
+import { fetchEobs, uploadEob, createCheckoutSession, updateUserZip } from '../lib/api'
 
 export default function DashboardPage() {
   const { logout } = useAuth()
@@ -110,6 +111,16 @@ export default function DashboardPage() {
             </p>
           </div>
         </header>
+
+        <LocationZipPrompt
+          onZipDetected={async (zip) => {
+            try {
+              await updateUserZip(zip)
+            } catch (err) {
+              console.error('Failed to save ZIP', err)
+            }
+          }}
+        />
 
         <section className="dashboard__upload-card">
           <div className="dashboard__upload-info">
